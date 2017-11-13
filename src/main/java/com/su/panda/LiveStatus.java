@@ -2,7 +2,7 @@ package com.su.panda;
 
 public enum LiveStatus {
 	GET_SUCCESS(0, "获取api信息成功"), NET_CONNECT_ERR(1, "请求api网络错误"), CALL_API_ERR(2, "调用api失败"), LIVE_UNOPEN(3,
-			"直播未开始"), SYSTEM_ERR(4, "系统错误"), PARSE_LIVE_LINE_ERR(5, "解析线路错误");
+			"直播未开始"), SYSTEM_ERR(4, "系统错误"), PARSE_LIVE_LINE_ERR(5, "解析线路错误"), NO_PARSE(6, "没用对应的解析器");
 	private final int status;
 	private final String message;
 

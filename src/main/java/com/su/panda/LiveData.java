@@ -4,10 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LiveData {
-	/**
-	 * 状态码:1-请求api失败，2-api调用失败，3-直播未开始,4-系统错误
-	 * */
 	private	LiveStatus status;
+	/**
+	 * 线程类型
+	 * */
+	private int liveLineType;
 	/**
 	 * 视频主地址
 	 * */
@@ -38,10 +39,19 @@ public class LiveData {
 	public void setBackupUrl(List<String> backupUrl) {
 		this.backupUrl = backupUrl;
 	}
+	
+	public int getLiveLineType() {
+		return liveLineType;
+	}
+	public void setLiveLineType(int liveLineType) {
+		this.liveLineType = liveLineType;
+	}
 	@Override
 	public String toString() {
-		return "LiveData [status=" + status + ", mainUrl=" + mainUrl + ", backupUrl=" + backupUrl + "]";
+		return "LiveData [status=" + status + ", liveLineType=" + liveLineType + ", mainUrl=" + mainUrl + ", backupUrl="
+				+ backupUrl + "]";
 	}
+	
 	
 	
 	

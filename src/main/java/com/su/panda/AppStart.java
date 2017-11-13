@@ -1,11 +1,6 @@
 package com.su.panda;
 
 import java.io.IOException;
-import java.net.URL;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import javax.net.ssl.HttpsURLConnection;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -17,51 +12,23 @@ import org.apache.http.util.EntityUtils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.su.panda.download.LiveLineDownload;
+import com.su.panda.parse.LiveLineParse;
 
 public class AppStart {
-	
-	public static volatile boolean flag = true;
 
 	private static AppStart app = new AppStart();
-	/**
-	 * 执行下载任务的线程池
-	 */
-	private static ExecutorService tPool = Executors.newCachedThreadPool();
 
 	public static void main(String[] args) {
-
+		AppContext.init();
+		// 不可修复的错误直接关闭
 		LiveData data = app.getLiveData(AppConst.API_URL, AppConst.ROOM_ID, AppConst.ROOM_KEY);
-		while (true) {
-			try {
-				if (flag) {
-					URL url = new URL(data.getMainUrl());
-					// 打开和 url 之间的连接
-					HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
-					// 设置通用的请求属性
-					conn.setRequestProperty("accept", "*/*");
-					conn.setRequestProperty("connection", "keep-alive");
-					conn.setRequestProperty("user-agent",
-							"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36");
-					// 建立实际连接
-					conn.connect();
-					if (conn.getResponseCode() == 403) {
-						System.out.println("403连接异常!!!");
-						return;
-					}
-					System.out.println(AppUtil.getDateTime() + " 开始：");
-					tPool.execute(new DownloadTask(conn.getInputStream()));
-					flag = false;
-				}
-			} catch (IOException e) {
-				// e.printStackTrace();
-				System.out.println("......");
-			}
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+		if (data.getStatus().getStatus() != 0 && data.getStatus().getStatus() != 3) {
+			app.parintStatus(data.getStatus());
+			return;
 		}
+		LiveLineDownload download = AppContext.getDownload(data.getLiveLineType());
+		download.download(data);
 	}
 
 	/**
@@ -90,9 +57,8 @@ public class AppStart {
 				return liveData;
 			}
 			JSONObject data = jso.getJSONObject("data");
-			int cover_status = data.getJSONObject("roominfo").getIntValue("cover_status");
 			// TODO 判断开播状态，没有找到时跟开播状态相关的信息
-			JSONObject videoinfo = jso.getJSONObject("data").getJSONObject("videoinfo");
+			JSONObject videoinfo = data.getJSONObject("videoinfo");
 			JSONObject plflag_list = videoinfo.getJSONObject("plflag_list");
 			JSONObject auth = plflag_list.getJSONObject("auth");
 			String plflag = videoinfo.getString("plflag");
@@ -103,16 +69,21 @@ public class AppStart {
 			JSONArray backup = plflag_list.getJSONArray("backup");
 			for (Object s : backup) {
 				if (s instanceof String) {
-					liveData.getBackupUrl().add(app.parseLiveLineInfo((String) s, sign, rid, time));
+					// liveData.getBackupUrl().add(app.parseLiveLineInfo((String) s, sign, rid,
+					// time));
 				}
 			}
 			// 主线路
 			String main = plflag_list.getString("main");
-			liveData.setMainUrl(app.parseLiveLineInfo(main, sign, rid, time));
+			String[] arr = main.split("_");
+			LiveLineParse parse = AppContext.getParse(Integer.parseInt(arr[0]));
+			if (parse == null) {
+				liveData.setStatus(LiveStatus.NO_PARSE);
+				return liveData;
+			}
+			String url = parse.parse(liveData, main, sign, rid, time);
+			liveData.setMainUrl(url);
 
-		} catch (ParseLiveLineException e) {
-			liveData.setStatus(LiveStatus.PARSE_LIVE_LINE_ERR);
-			e.printStackTrace();
 		} catch (IOException e) {
 			liveData.setStatus(LiveStatus.NET_CONNECT_ERR);
 			e.printStackTrace();
@@ -124,29 +95,8 @@ public class AppStart {
 		return liveData;
 	}
 
-	/**
-	 * 解析线路信息
-	 * 
-	 * @throws ParseLiveLineException
-	 */
-	public String parseLiveLineInfo(String vlStr, String sign, String rid, String time) throws ParseLiveLineException {
-		String[] arr = vlStr.split("_");
-		// 使用默认线路
-		String liveUrl = AppConst.DEFAULT_LIVE_LINE_1;
-		/*
-		 * String liveUrl = liveLineMap.get(arr[0]); if (liveUrl == null) {
-		 * throw new ParseLiveLineException(); }
-		 */
-		liveUrl = liveUrl.replaceFirst("\\?", arr[1]).replaceFirst("\\?", AppConst.ROOM_KEY);
-		StringBuilder sbl = new StringBuilder(liveUrl);
-		sbl.append("?");
-		sbl.append("sign=");
-		sbl.append(sign);
-		sbl.append("&ts=");
-		sbl.append(time);
-		sbl.append("&rid=");
-		sbl.append(rid);
-		return sbl.toString();
+	public void parintStatus(LiveStatus ls) {
+		System.out.println(ls.getStatus() + " : " + ls.getMessage());
 	}
 
 }
