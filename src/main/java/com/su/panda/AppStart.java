@@ -19,7 +19,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
 public class AppStart {
-
+	
 	public static volatile boolean flag = true;
 
 	private static AppStart app = new AppStart();
